@@ -1,16 +1,13 @@
 apply plugin: 'com.android.library'
 apply plugin: 'maven'
 
-group = 'me.tangye'
-version = '1.0.2-SNAPSHOT'
-
 android {
     compileSdkVersion 22
     buildToolsVersion "23.0.1"
 
     defaultConfig {
         minSdkVersion 8
-        targetSdkVersion 22
+        targetSdkVersion 23
     }
 
     buildTypes {
@@ -21,31 +18,23 @@ android {
     }
 }
 
-task installArchives(type: Upload) {
-    description "Installs the artifacts to the local Maven repository."
-    repositories.mavenInstaller {
-        configuration = configurations.default
-        pom.groupId = 'me.tangye'
-        pom.artifactId = 'promise'
-        pom.version = '1.0.2'
-    }
-}
-
 uploadArchives {
     repositories {
         mavenDeployer {
-            configuration = configurations.default
+            configuration = configurations.archives
+            pom.groupId = project.property('groupId')
+            pom.artifactId = project.property('artifactId')
+            pom.version = project.property('version')
             pom.project {
                 name 'Android Promise Library'
                 packaging 'aar'
                 description 'Promise library for Android applications'
                 inceptionYear '2015'
             }
-            repository(url: 'http://pluto-nexus.elegantpay.com:6002/content/repositories/snapshots/') {
-                authentication(userName:'deployment', password:'deployment123')
+            repository(url: project.property('repoUrl')) {
+                authentication(userName:project.property('username'), password:project.property('password'))
             }
             uniqueVersion=false
         }
     }
 }
-
