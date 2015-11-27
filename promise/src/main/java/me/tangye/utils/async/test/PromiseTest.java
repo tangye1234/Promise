@@ -117,6 +117,7 @@ public class PromiseTest {
 			}
 		});
 		System.out.println("start Promise");
+
 	}
 
 }

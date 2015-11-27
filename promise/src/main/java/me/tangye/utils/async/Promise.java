@@ -1,5 +1,6 @@
 package me.tangye.utils.async;
 
+import java.lang.Override;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -393,6 +394,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	protected static <T> void doResolve(Function<T> function,
 			final InternalResolver<T> internalResolver) {
 		final AtomicBoolean done = new AtomicBoolean(false);
+		final Handler handler = new Handler();
 		try {
 			function.run(new Locker<T>() {
 
@@ -415,6 +417,20 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 						return internalResolver.reject(exception);
 					}
 					return null;
+				}
+
+				@Override
+			    public void post(Runnable runnable) {
+					if (!done.get()) {
+						handler.post(runnable);
+					}
+				}
+
+				@Override
+				public void postDelayed(Runnable runnable, long delay) {
+					if (!done.get()) {
+						handler.postDelayed(runnable, delay);
+					}
 				}
 			});
 		} catch (Exception e) {
@@ -749,6 +765,43 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		});
 	}
 
+	/**
+	 * 生成一个TimeoutPromsie,规定的时间内抛出指定的异常,若Exception为空,则规定时间内返回Void结果
+	 *
+	 * @param timeout 指定的超时时间,该时间不会特别准确,因为是post到指定的Promise Looper上执行的
+	 * @param exception 指定的异常,可以为null
+	 * @return timeout exception promise
+	 */
+	public static Promise<Void> timeout(final long timeout, final Exception exception) {
+		return timeout(timeout, exception, Looper.myLooper());
+	}
+
+	/**
+	 * 生成一个TimeoutPromsie,规定的时间内抛出指定的异常,若Exception为空,则规定时间内返回Void结果
+	 *
+	 * @param timeout 指定的超时时间,该时间不会特别准确,因为是post到指定的Promise Looper上执行的
+	 * @param exception 指定的异常,可以为null
+	 * @param looper Promise执行的looper
+	 * @return timeout exception promise
+	 */
+	public static Promise<Void> timeout(final long timeout, final Exception exception, final Looper looper) {
+		return Promise.make(new Promise.DirectFunction<Void>() {
+			@Override
+			public void run(final Promise.Locker<Void> locker) {
+				locker.postDelayed(new Runnable() {
+					@Override
+					public void run() {
+						if (exception != null) {
+							locker.reject(exception);
+						} else {
+							locker.resolve();
+						}
+					}
+				}, timeout);
+			}
+		}, looper);
+	}
+
 	interface Function<D> {
 		void run(final Locker<D> locker);
 	}
@@ -798,6 +851,19 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		 * @return 已经完成时，返回true
 		 */
 		public abstract boolean done();
+
+		/**
+		 * 在当前looper上post一个Runnable
+		 * @param runnable 要执行的Runnable
+		 */
+		public abstract void post(Runnable runnable);
+
+		/**
+		 * 在当前looper上post一个Runnable
+		 * @param runnable 要执行的Runnable
+		 * @param delay, 延迟的时间
+		 */
+		public abstract void postDelayed(Runnable runnable, long delay);
 	}
 
 	/**

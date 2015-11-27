@@ -18,13 +18,16 @@ android {
     }
 }
 
+def versionName = project.property('version')
+def artifactId = project.property('artifactId')
+def groupId = project.property('groupId')
+
 uploadArchives {
     repositories {
         mavenDeployer {
-            configuration = configurations.archives
-            pom.groupId = project.property('groupId')
-            pom.artifactId = project.property('artifactId')
-            pom.version = project.property('version')
+            pom.groupId = groupId
+            pom.artifactId = artifactId
+            pom.version = versionName
             pom.project {
                 name 'Android Promise Library'
                 packaging 'aar'
@@ -34,7 +37,28 @@ uploadArchives {
             repository(url: project.property('repoUrl')) {
                 authentication(userName:project.property('username'), password:project.property('password'))
             }
-            uniqueVersion=false
+            uniqueVersion=true
         }
     }
+}
+
+task androidJavadocs(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+}
+
+task androidJavadocsJar(type: Jar) {
+    classifier = 'javadoc'
+    baseName = artifactId
+    from androidJavadocs.destinationDir
+}
+
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    baseName = artifactId
+    from android.sourceSets.main.java.srcDirs
+}
+
+artifacts {
+    archives androidJavadocsJar
+    archives androidSourcesJar
 }
