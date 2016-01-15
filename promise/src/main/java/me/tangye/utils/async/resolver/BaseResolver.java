@@ -18,7 +18,7 @@ public interface BaseResolver<D, D1> {
 	 * @return
 	 * 
 	 */
-	public D1 resolve(D newValue);
+	D1 resolve(D newValue);
 	/**
 	 * 异步回调结果失败方法，如果你想直接处理异常抛出<br>
 	 * 可以使用{@link ExecuteException}来包装实际的异常
@@ -26,5 +26,5 @@ public interface BaseResolver<D, D1> {
 	 * @return
 	 * 
 	 */
-	public D1 reject(Exception exception);
+	D1 reject(Exception exception);
 }
