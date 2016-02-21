@@ -151,6 +151,20 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		return new Promise<>(func, handler.getLooper());
 	}
 
+	/**
+	 * clone a Promise with a new looper
+	 * @param looper new Promise looper
+	 * @return new Promise
+	 */
+	public Promise<D> clone(Looper looper) {
+		if (looper == handler.getLooper()) {
+			return clone();
+		}
+		@SuppressWarnings("unchecked")
+		Promise<D> promise = (Promise<D>) Promise.resolveValue(this, looper);
+		return promise;
+	}
+
 	private <T> void postResolve(final Function<T> function,
 			final InternalResolver<T> internalResolver) {
 		Runnable r = new Runnable() {
@@ -361,28 +375,29 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		if (handler.getLooper().getThread() == Thread.currentThread()) {
 			throw new IllegalStateException("当前线程与Promise执行线程不能为同一个线程");
 		}
-		synchronized (this) {
+		if (state == null) {
+			final Object lock = new Object();
 			then(new DirectResolver<D, Void>() {
 
 				@Override
 				public Void resolve(D newValue) {
-					Promise.this.notify();
+					lock.notify();
 					return null;
 				}
 
 				@Override
 				public Void reject(Exception exception) {
-					Promise.this.notify();
+					lock.notify();
 					return null;
 				}
 
 			});
-			this.wait();
-			if (!state && exception != null) {
-				throw exception;
-			} else {
-				return nonPromiseValue;
-			}
+			lock.wait();
+		}
+		if (!state && exception != null) {
+			throw exception;
+		} else {
+			return nonPromiseValue;
 		}
 	}
 
@@ -643,8 +658,9 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	/**
 	 * 可以通过该方法继续抛出能够传递的Exception
 	 * @param e 要抛出的异常
+	 * 返回类型使用Void表示, 可以使用return Promise.throwException(e) as a Void function
 	 */
-	public static void throwException(final Exception e) {
+	public static Void throwException(final Exception e) {
 		if (e instanceof ExecuteException) {
 			throw (ExecuteException) e;
 		}
@@ -976,7 +992,6 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	private static class PromiseDefer<D, D1> extends Defer<D, Promise<D1>> {
-
 		public PromiseDefer(PromiseResolver<D, D1> resolver,
 				Locker<Promise<D1>> locker) {
 			super(resolver, locker);
