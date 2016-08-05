@@ -140,7 +140,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	/**
-	 * clone a Promise with the same 
+	 * clone a Promise with the same looper
 	 */
 	@SuppressWarnings("unchecked")
 	public Promise<D> clone() {
