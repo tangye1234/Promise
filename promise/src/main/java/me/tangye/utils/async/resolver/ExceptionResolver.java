@@ -1,6 +1,5 @@
 package me.tangye.utils.async.resolver;
 
-import me.tangye.utils.async.ExecuteException;
 import me.tangye.utils.async.Promise;
 
 /**
@@ -24,12 +23,11 @@ public abstract class ExceptionResolver<D, E extends Throwable> implements Direc
 			@SuppressWarnings("unchecked")
 			E e = (E) exception;
 			return onCatch(e);
-		} catch(ExecuteException e0) {
-			throw e0;
+		} catch(ClassCastException e0) {
+			throw Promise.newException(exception);
 		} catch(Exception e0) {
-			Promise.throwException(exception);
+			throw Promise.newException(e0);
 		}
-		return null;
 	}
 
 	public abstract D onCatch(E exception);

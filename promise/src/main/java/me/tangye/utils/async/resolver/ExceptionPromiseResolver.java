@@ -26,12 +26,11 @@ public abstract class ExceptionPromiseResolver<D, E extends Throwable> implement
 			@SuppressWarnings("unchecked")
 			E e = (E) exception;
 			return onCatch(e);
-		} catch(ExecuteException e0) {
-			throw e0;
+		} catch(ClassCastException e0) {
+			throw Promise.newException(exception);
 		} catch(Exception e0) {
-			Promise.throwException(exception);
+			throw Promise.newException(e0);
 		}
-		return null;
 	}
 
 	public abstract Promise<D> onCatch(E exception);

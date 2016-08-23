@@ -1,15 +1,19 @@
 package me.tangye.utils.async;
 
-import java.lang.Override;
-import java.lang.Throwable;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+
+import junit.framework.Assert;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import junit.framework.Assert;
 import me.tangye.utils.async.resolver.BaseResolver;
+import me.tangye.utils.async.resolver.Defer;
 import me.tangye.utils.async.resolver.DirectResolver;
 import me.tangye.utils.async.resolver.ExceptionPromiseResolver;
 import me.tangye.utils.async.resolver.ExceptionResolver;
@@ -17,9 +21,6 @@ import me.tangye.utils.async.resolver.FinalResolver;
 import me.tangye.utils.async.resolver.PromiseResolver;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
 import me.tangye.utils.async.resolver.SimpleResolver;
-
-import android.os.Handler;
-import android.os.Looper;
 
 /**
  * Promise异步模型，类似于Future 该模型本身也是一个 @{link Thenable}
@@ -32,25 +33,28 @@ import android.os.Looper;
 public class Promise<D> implements Thenable<D>, Cloneable {
 
 	/** 当前Promise的版本 **/
-	public static final String VERSION = "1.0.4";
+	public static final String VERSION = "1.0.5";
 
 	/* value may be a non promise value */
-	private volatile D nonPromiseValue;
+	protected volatile D nonPromiseValue;
 
 	/* result exception in promise */
-	private volatile Exception exception;
+	protected volatile Exception exception;
 
 	/* if promise is resolved or reject or pending */
-	private Boolean state;
+	protected Boolean state;
 
 	/* a function cache for cloning */
 	private Function<?> func;
+
+	/* a throwable initialized in promise constructor */
+	private final Throwable throwable;
 
 	/*
 	 * when promise is not resolved, resolvers got in function [then] should be
 	 * deferred
 	 */
-	private List<Defer<D, ?>> deferreds;
+	private List<CachedResolver<D, ?>> deferreds;
 
 	/* a resolver who receives promise as a value */
 	private final ProcessResolver<Promise<D>> PROMISE_RESOLVER = new ProcessResolver<>();
@@ -120,6 +124,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		this.nonPromiseValue = null;
 		this.exception = null;
 		this.func = function;
+		this.throwable = new Throwable();
 		Assert.assertNotNull(looper);
 		handler = new Handler(looper);
 		if (function != null) {
@@ -145,7 +150,8 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	@SuppressWarnings("unchecked")
 	public Promise<D> clone() {
 		if (this instanceof ValuePromise) {
-			D value = ((ValuePromise<D>) this).value;
+			ValuePromise<D> promise = (ValuePromise<D>) this;
+			D value = promise.nonPromiseValue;
 			return (Promise<D>) Promise.resolveValue(value, handler.getLooper());
 		}
 		return new Promise<>(func, handler.getLooper());
@@ -175,7 +181,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		runForHandler(r, handler);
 	}
 
-	private static void runForHandler(Runnable r, Handler h) {
+	public static void runForHandler(Runnable r, Handler h) {
 		if (h.getLooper() == Looper.myLooper()) {
 			r.run();
 		} else {
@@ -237,13 +243,28 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 				@Override
 				public void run() {
 					state = false;
-					exception = e;
+					exception = unwrap(e);
 					finale();
 				}
 			};
 			runForHandler(r, handler);
 			return null;
 		}
+	}
+
+	/**
+	 * 给exception赋值前，先进行解包
+	 * @param e 任意locker传入的或者try catch的Exception
+	 * @return 解包的Exception
+     */
+	protected Exception unwrap(Exception e) {
+		while (e instanceof ExecuteException && e.getCause() instanceof Exception) {
+			e = (Exception) e.getCause();
+		}
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+			e.addSuppressed(throwable);
+		}
+		return e;
 	}
 
 	/**
@@ -284,7 +305,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		return Promise.make(new DirectFunction<D1>() {
 			@Override
 			public void run(Locker<D1> locker) {
-				handle(new Defer<>(resolver, locker));
+				handle(new CachedResolver<>(resolver, locker));
 			}
 		}, handler.getLooper());
 	}
@@ -294,7 +315,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		return Promise.make(new PromiseFunction<D1>() {
 			@Override
 			public void run(final Locker<Promise<D1>> locker) {
-				handle(new PromiseDefer<>(resolver, locker));
+				handle(new PromiseCachedResolver<>(resolver, locker));
 			}
 		}, handler.getLooper());
 	}
@@ -401,18 +422,18 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		}
 	}
 
-	private <D1> void handle(final Defer<D, D1> defer) {
+	private <D1> void handle(final CachedResolver<D, D1> cachedResolver) {
 		// Promise未完成时，直接缓存
 		if (state == null) {
-			deferreds.add(defer);
+			deferreds.add(cachedResolver);
 			return;
 		}
 		// 否则在下一个时间中，尝试处理缓存的resolver
 		handler.post(new Runnable() {
 			@Override
 			public void run() {
-				Locker<D1> l = defer.locker;
-				BaseResolver<D, D1> t = defer.resolver;
+				Locker<D1> l = cachedResolver.locker;
+				BaseResolver<D, D1> t = cachedResolver.resolver;
 				if (t == null) {
 					throw new IllegalArgumentException(
 							"resolver should not be null");
@@ -426,12 +447,6 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 						} else {
 							l.resolve(p);
 						}
-					} catch (ExecuteException e) {
-						Exception th = (Exception) e.getCause();
-						if (th != null)
-							l.reject(th);
-						else
-							l.reject(e);
 					} catch (Exception e) {
 						l.reject(e);
 					}
@@ -505,61 +520,14 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	private static class ValuePromise<T> extends Promise<T> {
-		private T value;
 
-		public ValuePromise(T value, Looper looper) {
+		public ValuePromise(T nonPromiseValue, Looper looper) {
 			super(null, looper);
-			this.value = value;
-		}
-
-		@Override
-		public <T1> Promise<T1> then(final DirectResolver<T, T1> resolver) {
-			return Promise.make(new DirectFunction<T1>() {
-				@Override
-				public void run(final Locker<T1> locker) {
-					handler.post(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								locker.resolve(resolver.resolve(value));
-							} catch (ExecuteException e) {
-								Exception th = (Exception) e.getCause();
-								if (th != null)
-									locker.reject(th);
-								else
-									locker.reject(e);
-							} catch (Exception e) {
-								locker.reject(e);
-							}
-						}
-					});
-				}
-			}, handler.getLooper());
-		}
-
-		@Override
-		public <T1> Promise<T1> then(final PromiseResolver<T, T1> resolver) {
-			return Promise.make(new PromiseFunction<T1>() {
-				@Override
-				public void run(final Locker<Promise<T1>> locker) {
-					handler.post(new Runnable() {
-						@Override
-						public void run() {
-							try {
-								locker.resolve(resolver.resolve(value));
-							} catch (ExecuteException e) {
-								Exception th = (Exception) e.getCause();
-								if (th != null)
-									locker.reject(th);
-								else
-									locker.reject(e);
-							} catch (Exception e) {
-								locker.reject(e);
-							}
-						}
-					});
-				}
-			}, handler.getLooper());
+			if (nonPromiseValue instanceof Exception) {
+				throw new IllegalArgumentException("value should not be exception");
+			}
+			this.nonPromiseValue = nonPromiseValue;
+			this.state = true;
 		}
 	}
 
@@ -599,6 +567,8 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 			} catch (Exception e) {
 				return Promise.rejectException(e, looper);
 			}
+		} else if (value instanceof Exception) {
+			return Promise.rejectException((Exception) value, looper);
 		}
 		return new ValuePromise<>(value, looper);
 	}
@@ -665,6 +635,18 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 			throw (ExecuteException) e;
 		}
 		throw new ExecuteException(e);
+	}
+
+	/**
+	 * 生成Promise内部的Exception，避免显视的申明throws方法
+	 * @param e 包装一个Exception源
+	 * @return 生成一个无需申明的Exception
+     */
+	public static ExecuteException newException(final Exception e) {
+		if (e instanceof ExecuteException) {
+			return (ExecuteException) e;
+		}
+		return new ExecuteException(e);
 	}
 
 	/**
@@ -926,7 +908,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * @param <D>
 	 *            处理的结果类型
 	 */
-	public static abstract class Locker<D> implements BaseResolver<D, Void> {
+	public static abstract class Locker<D> implements Defer<D> {
 
 		/**
 		 * 快捷方法{@link #resolve(D result)}<br>
@@ -963,8 +945,8 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	/**
-	 * 一个被缓存的Resolver对象，类似一个处理数据的Pipe<br>
-	 * 输入位D类型，输出为D1类型
+	 * 一个被缓存的Resolver包装对象，类似一个处理数据的Pipe<br>
+	 * 输入为D类型，输出为D1类型
 	 * 
 	 * @author tangye
 	 *
@@ -973,7 +955,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * @param <D1>
 	 *            该Resolver处理后的数据类
 	 */
-	private static class Defer<D, D1> {
+	private static class CachedResolver<D, D1> {
 		public final BaseResolver<D, D1> resolver;
 		public final Locker<D1> locker;
 
@@ -985,15 +967,15 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		 * @param locker
 		 *            绑定一个处理结果locker回调
 		 */
-		public Defer(BaseResolver<D, D1> resolver, Locker<D1> locker) {
+		public CachedResolver(BaseResolver<D, D1> resolver, Locker<D1> locker) {
 			this.resolver = resolver;
 			this.locker = locker;
 		}
 	}
 
-	private static class PromiseDefer<D, D1> extends Defer<D, Promise<D1>> {
-		public PromiseDefer(PromiseResolver<D, D1> resolver,
-				Locker<Promise<D1>> locker) {
+	private static class PromiseCachedResolver<D, D1> extends CachedResolver<D, Promise<D1>> {
+		public PromiseCachedResolver(PromiseResolver<D, D1> resolver,
+									 Locker<Promise<D1>> locker) {
 			super(resolver, locker);
 		}
 	}
