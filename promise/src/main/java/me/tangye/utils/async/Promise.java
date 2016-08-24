@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import me.tangye.utils.async.resolver.BaseResolver;
-import me.tangye.utils.async.resolver.Defer;
+import me.tangye.utils.async.resolver.Deferred;
 import me.tangye.utils.async.resolver.DirectResolver;
 import me.tangye.utils.async.resolver.ExceptionPromiseResolver;
 import me.tangye.utils.async.resolver.ExceptionResolver;
@@ -908,7 +908,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * @param <D>
 	 *            处理的结果类型
 	 */
-	public static abstract class Locker<D> implements Defer<D> {
+	public static abstract class Locker<D> implements Deferred<D> {
 
 		/**
 		 * 快捷方法{@link #resolve(D result)}<br>

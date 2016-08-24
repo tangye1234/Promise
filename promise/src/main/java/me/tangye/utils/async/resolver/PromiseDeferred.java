@@ -9,19 +9,23 @@ import me.tangye.utils.async.Promise;
 
 /**
  * Created by coffee3689 on 16/8/23.
- * 通过制造一个Defer对象，创建一个Promise.Locker，同事可以createPromise
+ * 通过制造一个Deferred对象，创建一个Promise.Locker，同事派生Promise
  */
-public class PromiseDefer<T> extends Promise.Locker<T> {
+public class PromiseDeferred<T> extends Promise.Locker<T> {
     private final AtomicBoolean done = new AtomicBoolean(false);
     private final Handler handler;
     private final Promise<T> internalPromise;
     private Promise.Locker<T> internalLocker;
 
-    public PromiseDefer() {
-        this(Looper.myLooper());
+    public static <D> PromiseDeferred<D> make(Looper looper) {
+        return new PromiseDeferred<>();
     }
 
-    public PromiseDefer(Looper looper) {
+    public static <D> PromiseDeferred<D> make() {
+        return make(Looper.myLooper());
+    }
+
+    private PromiseDeferred(Looper looper) {
         handler = new Handler(looper);
         internalPromise = Promise.make(new Promise.DirectFunction<T>() {
             @Override
@@ -31,7 +35,11 @@ public class PromiseDefer<T> extends Promise.Locker<T> {
         }, looper);
     }
 
-    public Promise<T> createPromise() {
+    private PromiseDeferred() {
+        this(Looper.myLooper());
+    }
+
+    public Promise<T> promise() {
         return internalPromise.clone();
     }
 
@@ -41,15 +49,15 @@ public class PromiseDefer<T> extends Promise.Locker<T> {
     }
 
     @Override
-    public Void resolve(final T r) {
+    public Void resolve(final T result) {
         if (done.compareAndSet(false, true)) {
-            Runnable runnalbe = new Runnable() {
+            Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    internalLocker.resolve(r);
+                    internalLocker.resolve(result);
                 }
             };
-            Promise.runForHandler(runnalbe, handler);
+            Promise.runForHandler(r, handler);
         }
         return null;
     }
@@ -57,13 +65,13 @@ public class PromiseDefer<T> extends Promise.Locker<T> {
     @Override
     public Void reject(final Exception exception) {
         if (done.compareAndSet(false, true)) {
-            Runnable runnalbe = new Runnable() {
+            Runnable r = new Runnable() {
                 @Override
                 public void run() {
                     internalLocker.reject(exception);
                 }
             };
-            Promise.runForHandler(runnalbe, handler);
+            Promise.runForHandler(r, handler);
         }
         return null;
     }
