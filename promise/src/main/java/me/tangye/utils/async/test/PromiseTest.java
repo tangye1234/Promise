@@ -8,7 +8,7 @@ import me.tangye.utils.async.Promise.DirectFunction;
 import me.tangye.utils.async.Promise.Locker;
 import me.tangye.utils.async.resolver.DirectResolver;
 import me.tangye.utils.async.resolver.ExceptionResolver;
-import me.tangye.utils.async.resolver.PromiseDefer;
+import me.tangye.utils.async.resolver.PromiseDeferred;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
 import me.tangye.utils.async.resolver.SimpleResolver;
 
@@ -122,7 +122,7 @@ public class PromiseTest {
 		System.out.println("start Promise");
 
 
-		final PromiseDefer<Integer> defer = new PromiseDefer<>();
+		final PromiseDeferred<Integer> defer = PromiseDeferred.make();
 
 		defer.createPromise().then(new SimpleResolver<Integer, Void>() {
 			@Override
@@ -151,7 +151,7 @@ public class PromiseTest {
 				} catch (InterruptedException e) {
 					defer.reject(e);
 				}
-				defer.reject(new TimeoutException("dddd"));
+				defer.reject(new TimeoutException("defer timeout"));
 			}
 		}.start();
 
