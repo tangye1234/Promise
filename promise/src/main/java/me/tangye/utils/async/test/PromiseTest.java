@@ -1,11 +1,14 @@
 package me.tangye.utils.async.test;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeoutException;
 
 import me.tangye.utils.async.Promise;
 import me.tangye.utils.async.Promise.DirectFunction;
 import me.tangye.utils.async.Promise.Locker;
 import me.tangye.utils.async.resolver.DirectResolver;
+import me.tangye.utils.async.resolver.ExceptionResolver;
+import me.tangye.utils.async.resolver.PromiseDefer;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
 import me.tangye.utils.async.resolver.SimpleResolver;
 
@@ -117,6 +120,43 @@ public class PromiseTest {
 			}
 		});
 		System.out.println("start Promise");
+
+
+		final PromiseDefer<Integer> defer = new PromiseDefer<>();
+
+		defer.createPromise().then(new SimpleResolver<Integer, Void>() {
+			@Override
+			public Void resolve(Integer newValue) {
+				System.out.println("Defer:::" + newValue);
+				return null;
+			}
+		}).exception(new ExceptionResolver<Void, NullPointerException>() {
+			@Override
+			public Void onCatch(NullPointerException exception) {
+				exception.printStackTrace();
+				return null;
+			}
+		}).exception(new ExceptionResolver<Void, TimeoutException>() {
+			@Override
+			public Void onCatch(TimeoutException exception) {
+				exception.printStackTrace();
+				return null;
+			}
+		});
+
+		new Thread() {
+			public void run() {
+				try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					defer.reject(e);
+				}
+				defer.reject(new TimeoutException("dddd"));
+			}
+		}.start();
+
+
+
 
 	}
 
