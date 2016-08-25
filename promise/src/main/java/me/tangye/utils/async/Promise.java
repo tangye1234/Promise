@@ -21,7 +21,6 @@ import me.tangye.utils.async.resolver.ExceptionResolver;
 import me.tangye.utils.async.resolver.FinalResolver;
 import me.tangye.utils.async.resolver.PromiseResolver;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
-import me.tangye.utils.async.resolver.SimpleResolver;
 
 /**
  * Promise异步模型，类似于Future 该模型本身也是一个 @{link Thenable}
