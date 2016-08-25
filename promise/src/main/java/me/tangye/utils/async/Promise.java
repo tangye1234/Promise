@@ -7,6 +7,7 @@ import android.os.Looper;
 import junit.framework.Assert;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -20,7 +21,6 @@ import me.tangye.utils.async.resolver.ExceptionResolver;
 import me.tangye.utils.async.resolver.FinalResolver;
 import me.tangye.utils.async.resolver.PromiseResolver;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
-import me.tangye.utils.async.resolver.SimpleResolver;
 
 /**
  * Promise异步模型，类似于Future 该模型本身也是一个 @{link Thenable}
@@ -219,10 +219,16 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 						} else {
 							// 记录最终的结果
 							state = true;
+							// here we may get cast exception due do wrong resolve situation
+							// FIXME currently print stack trace and reject
 							nonPromiseValue = (D) newValue;
 							finale();
 						}
 					} catch (Exception e) {
+						if (e instanceof ClassCastException) {
+							e.printStackTrace();
+							// FIXME maybe this exception should be thrown
+						}
 						// 记录异常结果
 						reject(e);
 					}
@@ -651,6 +657,16 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 
 	/**
 	 * 同时运行多个Promise，当所有Promise结果都完成后，返回所有结果的Object数组
+	 *
+	 * @param objects 参与all的所有值
+	 * @return 所有值的总Promise
+     */
+	public static Promise<Object[]> all(Object ... objects) {
+		return all(Arrays.asList(objects));
+	}
+
+	/**
+	 * 同时运行多个Promise，当所有Promise结果都完成后，返回所有结果的Object数组
 	 * 
 	 * @param values 参与all的所有值
 	 * @return 所有值的总Promise
@@ -733,6 +749,16 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 
 	/**
 	 * 同时处理多个Promise，第一个返回的value将会触发Promise处理完成
+	 *
+	 * @param objects 参与race的所有值数组
+	 * @return 返回一个race的Promise
+     */
+	public static Promise<Object> race(final Object ... objects) {
+		return race(Arrays.asList(objects));
+	}
+
+	/**
+	 * 同时处理多个Promise，第一个返回的value将会触发Promise处理完成
 	 * 
 	 * @param values 参与race的所有值
 	 * @return 返回一个race的Promise
@@ -781,31 +807,41 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * 依次执行所有values,一个执行完成采取执行下一个,最后一个执行完成后返回<br>
 	 * 中途有任何问题将会暂停执行直接抛出问题
 	 *
-	 * @param values 参与queue的所有值
-	 * @return 返回一个queue的Promise
+	 * @param functions 参与series的所有值
+	 * @return 返回一个series的Promise
 	 */
-	public static Promise<Object[]> queue(final Collection<?>values) {
-		return queue(values, Looper.myLooper());
+	public static Promise<Object[]> series(DirectFunction<?> ... functions) {
+		return series(Arrays.asList(functions));
 	}
 
 	/**
 	 * 依次执行所有values,一个执行完成采取执行下一个,最后一个执行完成后返回<br>
 	 * 中途有任何问题将会暂停执行直接抛出问题
 	 *
-	 * @param values 参与queue的所有值
-	 * @param looper Promise执行的looper
-	 * @return 返回一个queue的Promise
+	 * @param values 参与series的所有值
+	 * @return 返回一个series的Promise
 	 */
-	public static Promise<Object[]> queue(final Collection<?>values,
-			final Looper looper) {
+	public static Promise<Object[]> series(final Collection<DirectFunction<?>> values) {
+		return series(values, Looper.myLooper());
+	}
+
+	/**
+	 * 依次执行所有values,一个执行完成采取执行下一个,最后一个执行完成后返回<br>
+	 * 中途有任何问题将会暂停执行直接抛出问题
+	 *
+	 * @param values 参与series的所有值
+	 * @param looper Promise执行的looper
+	 * @return 返回一个series的Promise
+	 */
+	public static Promise<Object[]> series(final Collection<DirectFunction<?>> values,
+										   final Looper looper) {
 		return Promise.make(new DirectFunction<Object[]>() {
-			private Promise<Object> makePromise(final Iterator<?> iterator, final Object[] result, final int index) {
-				Object val = iterator.next();
+			private Promise<Object> makePromise(final Iterator<DirectFunction<?>> iterator, final Object[] result, final int index) {
+				DirectFunction<?> val = iterator.next();
 				@SuppressWarnings("unchecked")
-				Promise<Object> pr = (Promise<Object>) Promise
-						.resolveValue(val, looper);
+				Promise<Object> pr = (Promise<Object>) Promise.make(val, looper);
 				if (index < result.length - 1) {
-					pr.then(new SimplePromiseResolver<Object, Object>() {
+					pr = pr.then(new SimplePromiseResolver<Object, Object>() {
 						@Override
 						public Promise<Object> resolve(Object newValue) {
 							result[index] = newValue;
@@ -818,17 +854,16 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 
 			@Override
 			public void run(final Locker<Object[]> locker) {
-				final Iterator<?> iterator = values.iterator();
+				final Iterator<DirectFunction<?>> iterator = values.iterator();
 				final Object[] result = new Object[values.size()];
-				makePromise(iterator, result, 0).then(new SimpleResolver<Object, Void>() {
+				makePromise(iterator, result, 0).then(new DirectResolver<Object, Void>() {
 					@Override
 					public Void resolve(Object newValue) {
 						locker.resolve(result);
 						return null;
 					}
-				}).exception(new ExceptionResolver<Void, Exception>() {
 					@Override
-					public Void onCatch(Exception exception) {
+					public Void reject(Exception exception) {
 						locker.reject(exception);
 						return null;
 					}
@@ -838,11 +873,11 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	/**
-	 * 生成一个TimeoutPromsie,规定的时间内抛出指定的异常,若Exception为空,则规定时间内返回Void结果
+	 * 生成一个Timeout Promise,规定的时间内抛出指定的异常,若Exception为空,则规定时间内返回Void结果
 	 *
 	 * @param timeout 指定的超时时间,该时间不会特别准确,因为是post到指定的Promise Looper上执行的
 	 * @param exception 指定的异常,可以为null
-	 * @return timeout exception promise
+	 * @return timeout [exception] promise
 	 */
 	public static Promise<Void> timeout(final long timeout, final Exception exception) {
 		return timeout(timeout, exception, Looper.myLooper());

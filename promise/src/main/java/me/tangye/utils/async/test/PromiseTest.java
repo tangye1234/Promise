@@ -1,5 +1,6 @@
 package me.tangye.utils.async.test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
 
@@ -7,6 +8,7 @@ import me.tangye.utils.async.Promise;
 import me.tangye.utils.async.Promise.DirectFunction;
 import me.tangye.utils.async.Promise.Locker;
 import me.tangye.utils.async.resolver.DirectResolver;
+import me.tangye.utils.async.resolver.ExceptionPromiseResolver;
 import me.tangye.utils.async.resolver.ExceptionResolver;
 import me.tangye.utils.async.resolver.PromiseDeferred;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
@@ -33,6 +35,27 @@ public class PromiseTest {
 				}.start();
 			}
 			
+		});
+
+
+		Promise<Object> px = Promise.make(new DirectFunction<Object>() {
+			@Override
+			public void run(Locker<Object> locker) {
+
+			}
+		}).exception(new ExceptionResolver<Object, TimeoutException>() {
+			@Override
+			public Object onCatch(TimeoutException exception) {
+				exception.printStackTrace();
+				throw Promise.newException(exception);
+			}
+		});
+
+		px.exception(new ExceptionPromiseResolver<Object, InterruptedException>() {
+			@Override
+			public Promise<Object> onCatch(InterruptedException exception) {
+				throw Promise.newException(new IOException());
+			}
 		});
 		
 		Promise<Integer> p1p = p1.clone();
@@ -124,7 +147,12 @@ public class PromiseTest {
 
 		final PromiseDeferred<Integer> defer = PromiseDeferred.make();
 
-		defer.createPromise().then(new SimpleResolver<Integer, Void>() {
+		final PromiseDeferred<String> defer2 = PromiseDeferred.make();
+
+
+
+
+		defer.promise().then(new SimpleResolver<Integer, Void>() {
 			@Override
 			public Void resolve(Integer newValue) {
 				System.out.println("Defer:::" + newValue);
@@ -154,8 +182,6 @@ public class PromiseTest {
 				defer.reject(new TimeoutException("defer timeout"));
 			}
 		}.start();
-
-
 
 
 	}
