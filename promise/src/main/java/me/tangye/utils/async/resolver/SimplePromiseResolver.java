@@ -12,7 +12,6 @@ import me.tangye.utils.async.Promise;
 public abstract class SimplePromiseResolver<D, D1> implements PromiseResolver<D, D1> {
 	@Override
 	public final Promise<D1> reject(Exception exception) {
-		Promise.throwException(exception);
-		return null;
+		throw Promise.newException(exception);
 	}
 }

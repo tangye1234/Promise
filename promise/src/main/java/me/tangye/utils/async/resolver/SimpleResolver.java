@@ -12,7 +12,6 @@ import me.tangye.utils.async.Promise;
 public abstract class SimpleResolver<D, D1> implements DirectResolver<D, D1> {
 	@Override
 	public final D1 reject(Exception exception) {
-		Promise.throwException(exception);
-		return null;
+		throw Promise.newException(exception);
 	}
 }
