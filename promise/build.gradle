@@ -21,6 +21,9 @@ android {
 def versionName = project.hasProperty('version') ? project.property('version') : ''
 def artifactId = project.hasProperty('artifactId') ? project.property('artifactId') : ''
 def groupId = project.hasProperty('groupId') ? project.property('groupId') : ''
+def repoUrl = project.hasProperty('repoUrl') ? project.property('repoUrl') : ''
+def username = project.hasProperty('username') ? project.property('username') : ''
+def password = project.hasProperty('password') ? project.property('password') : ''
 
 uploadArchives {
     repositories {
@@ -34,8 +37,8 @@ uploadArchives {
                 description 'Promise library for Android applications'
                 inceptionYear '2015'
             }
-            repository(url: project.property('repoUrl')) {
-                authentication(userName:project.property('username'), password:project.property('password'))
+            repository(url: repoUrl) {
+                authentication(userName: username, password: password)
             }
             uniqueVersion=true
         }

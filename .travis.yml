@@ -3,6 +3,9 @@ jdk: oraclejdk8
 env:
   matrix:
   - ANDROID_TARGET=android-23
+branches:
+  only:
+  - master
 android:
   components:
   - android-22
