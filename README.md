@@ -33,9 +33,7 @@ And, The Promise lib here also provide us a lot of features that js promise owns
 
 public class PromiseTest {
 
-	@MainThread
 	public static void main(String...args) {
-
 		Promise<Integer> p1 = Promise.make(new DirectFunction<Integer>() {
 
 			@Override
@@ -60,7 +58,7 @@ public class PromiseTest {
 		Promise<Object> px = Promise.make(new DirectFunction<Object>() {
 			@Override
 			public void run(Locker<Object> locker) {
-
+				locker.reject(new TimeoutException("timeout"));
 			}
 		}).exception(new ExceptionResolver<Object, TimeoutException>() {
 			@Override
@@ -116,7 +114,7 @@ public class PromiseTest {
 			}
 		});
 
-		Promise ppp = p1.then(new DirectResolver<Integer, String>() {
+		p1.then(new DirectResolver<Integer, String>() {
 
 			@Override
 			public String resolve(Integer newValue) {
@@ -166,11 +164,7 @@ public class PromiseTest {
 			}
 		});
 
-
-
-		System.out.println("start Promise");
-
-
+		// making a deferred, then use defer to propagate a promise
 		final PromiseDeferred<Integer> defer = PromiseDeferred.make();
 
 		final PromiseDeferred<String> defer2 = PromiseDeferred.make();

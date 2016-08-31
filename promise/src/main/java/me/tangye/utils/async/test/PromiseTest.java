@@ -42,7 +42,7 @@ public class PromiseTest {
 		Promise<Object> px = Promise.make(new DirectFunction<Object>() {
 			@Override
 			public void run(Locker<Object> locker) {
-
+				locker.reject(new TimeoutException("timeout"));
 			}
 		}).exception(new ExceptionResolver<Object, TimeoutException>() {
 			@Override
@@ -98,7 +98,7 @@ public class PromiseTest {
 			}
 		});		
 		
-		Promise ppp = p1.then(new DirectResolver<Integer, String>() {
+		p1.then(new DirectResolver<Integer, String>() {
 
 			@Override
 			public String resolve(Integer newValue) {
@@ -148,11 +148,7 @@ public class PromiseTest {
 			}
 		});
 
-
-
-		System.out.println("start Promise");
-
-
+		// making a deferred, then use defer to propagate a promise
 		final PromiseDeferred<Integer> defer = PromiseDeferred.make();
 
 		final PromiseDeferred<String> defer2 = PromiseDeferred.make();
@@ -203,14 +199,6 @@ public class PromiseTest {
 
 		Thenable<Number> th3 = th2.cast();
 		th3.then(new SimpleResolver<Number, Object>() {
-			/**
-			 * 异步回调结果成功方法，如果你想直接处理异常抛出<br>
-			 * 可以使用 throw {@link Promise#newException(Exception) Promise.newException(e)}
-			 * 来包装实际的异常
-			 *
-			 * @param newValue resolve的结果
-			 * @return 解析结果
-			 */
 			@Override
 			public Object resolve(Number newValue) {
 				System.out.println(newValue);
