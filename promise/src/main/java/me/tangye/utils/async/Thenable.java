@@ -20,7 +20,7 @@ public interface Thenable<D> {
 	 * @param <D1> 转化后新的Promise结果返回类型
 	 * @return 返回一个新的Promise，其继承已有的Promise的Runtime Looper
 	 */
-	<D1> Promise<D1> then(final DirectResolver<D, D1> resolver);
+	<D1> Thenable<D1> then(final DirectResolver<? super D, ? extends D1> resolver);
 
 	/**
 	 * 执行该Promise的后续操作，使用then可以获取Promise操作结果，并进一步处理
@@ -29,7 +29,7 @@ public interface Thenable<D> {
 	 * @param <D1> 转化后新的Promise结果返回类型
 	 * @return 返回一个新的Promise，其继承已有的Promise的Runtime Looper
 	 */
-	<D1> Promise<D1> then(final PromiseResolver<D, D1> resolver);
+	<D1> Thenable<D1> then(final PromiseResolver<? super D, ? extends D1> resolver);
 
 	/**
 	 * 将该Thenable的结果作为一个新的Function的执行过程<br>
@@ -43,4 +43,11 @@ public interface Thenable<D> {
 	 * @return Function执行过程
 	 */
 	Function<D> getThen();
+
+	/**
+	 * 类型转变
+	 * @param <D1> 转换为新的类型
+	 * @return Thenable
+     */
+	<D1> Thenable<D1> cast();
 }

@@ -21,14 +21,14 @@ import me.tangye.utils.async.resolver.ExceptionResolver;
 import me.tangye.utils.async.resolver.FinalResolver;
 import me.tangye.utils.async.resolver.PromiseResolver;
 import me.tangye.utils.async.resolver.SimplePromiseResolver;
+import me.tangye.utils.async.resolver.SimpleResolver;
 
 /**
  * Promise异步模型，类似于Future 该模型本身也是一个 @{link Thenable}
  * 
  * @author tangye
  *
- * @param <D>
- *            该Future模型的期望返回数据类型
+ * @param <D> 该Future模型的期望返回数据类型
  */
 public class Promise<D> implements Thenable<D>, Cloneable {
 
@@ -54,7 +54,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * when promise is not resolved, resolvers got in function [then] should be
 	 * deferred
 	 */
-	private List<CachedResolver<D, ?>> deferreds;
+	private List<CachedResolver<? super D, ?>> deferreds;
 
 	/* a resolver who receives promise as a value */
 	@SuppressWarnings("FieldCanBeLocal")
@@ -307,7 +307,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	@Override
-	public <D1> Promise<D1> then(final DirectResolver<D, D1> resolver) {
+	public <D1> Promise<D1> then(final DirectResolver<? super D, ? extends D1> resolver) {
 		return Promise.make(new DirectFunction<D1>() {
 			@Override
 			public void run(Locker<D1> locker) {
@@ -317,13 +317,24 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	}
 
 	@Override
-	public <D1> Promise<D1> then(final PromiseResolver<D, D1> resolver) {
+	public <D1> Promise<D1> then(final PromiseResolver<? super D, ? extends D1> resolver) {
 		return Promise.make(new PromiseFunction<D1>() {
 			@Override
-			public void run(final Locker<Promise<D1>> locker) {
+			public void run(final Locker<Promise<? extends D1>> locker) {
 				handle(new PromiseCachedResolver<>(resolver, locker));
 			}
 		}, handler.getLooper());
+	}
+
+	@Override
+	public <D1> Promise<D1> cast() {
+		return then(new SimpleResolver<D, D1>() {
+			@Override
+			public D1 resolve(D newValue) {
+				//noinspection unchecked
+				return (D1) newValue;
+			}
+		});
 	}
 
 	/**
@@ -428,7 +439,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		}
 	}
 
-	private <D1> void handle(final CachedResolver<D, D1> cachedResolver) {
+	private <D1> void handle(final CachedResolver<? super D, D1> cachedResolver) {
 		// Promise未完成时，直接缓存
 		if (state == null) {
 			deferreds.add(cachedResolver);
@@ -439,7 +450,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 			@Override
 			public void run() {
 				Locker<D1> l = cachedResolver.locker;
-				BaseResolver<D, D1> t = cachedResolver.resolver;
+				BaseResolver<? super D, ? extends D1> t = cachedResolver.resolver;
 				if (t == null) {
 					throw new IllegalArgumentException(
 							"resolver should not be null");
@@ -953,7 +964,7 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	 * @param <D>
 	 *            实现的Promise结果类型
 	 */
-	public interface PromiseFunction<D> extends Function<Promise<D>> {
+	public interface PromiseFunction<D> extends Function<Promise<? extends D>> {
 	}
 
 	/**
@@ -1003,17 +1014,13 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 	/**
 	 * 一个被缓存的Resolver包装对象，类似一个处理数据的Pipe<br>
 	 * 输入为D类型，输出为D1类型
-	 * 
 	 * @author tangye
-	 *
-	 * @param <D>
-	 *            该Resolver将会接收到的数据类
-	 * @param <D1>
-	 *            该Resolver处理后的数据类
+	 * @param <T> 该Resolver将会接收到的数据类
+	 * @param <R> 该Resolver处理后的数据类
 	 */
-	private static class CachedResolver<D, D1> {
-		public final BaseResolver<D, D1> resolver;
-		public final Locker<D1> locker;
+	private static class CachedResolver<T, R> {
+		public final BaseResolver<T, ? extends R> resolver;
+		public final Locker<R> locker;
 
 		/**
 		 * 记录下这个Resolver对象，并绑定一个处理输出的locker回调
@@ -1023,15 +1030,22 @@ public class Promise<D> implements Thenable<D>, Cloneable {
 		 * @param locker
 		 *            绑定一个处理结果locker回调
 		 */
-		public CachedResolver(BaseResolver<D, D1> resolver, Locker<D1> locker) {
+		public CachedResolver(BaseResolver<T, ? extends R> resolver, Locker<R> locker) {
 			this.resolver = resolver;
 			this.locker = locker;
 		}
 	}
 
-	private static class PromiseCachedResolver<D, D1> extends CachedResolver<D, Promise<D1>> {
-		public PromiseCachedResolver(PromiseResolver<D, D1> resolver,
-									 Locker<Promise<D1>> locker) {
+	/**
+	 * 一个被缓存的PromiseResolver包装对象，类似一个处理数据的Pipe<br>
+	 * 输入为D类型，输出为D1类型
+	 * @author tangye
+	 * @param <T> 该Resolver将会接收到的数据类
+	 * @param <R> 该Resolver处理后的数据类
+	 */
+	private static class PromiseCachedResolver<T, R> extends CachedResolver<T, Promise<? extends R>> {
+		public PromiseCachedResolver(PromiseResolver<T, ? extends R> resolver,
+									 Locker<Promise<? extends R>> locker) {
 			super(resolver, locker);
 		}
 	}

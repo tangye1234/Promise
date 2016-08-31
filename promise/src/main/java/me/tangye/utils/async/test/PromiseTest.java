@@ -7,6 +7,7 @@ import java.util.concurrent.TimeoutException;
 import me.tangye.utils.async.Promise;
 import me.tangye.utils.async.Promise.DirectFunction;
 import me.tangye.utils.async.Promise.Locker;
+import me.tangye.utils.async.Thenable;
 import me.tangye.utils.async.resolver.DirectResolver;
 import me.tangye.utils.async.resolver.ExceptionPromiseResolver;
 import me.tangye.utils.async.resolver.ExceptionResolver;
@@ -97,7 +98,7 @@ public class PromiseTest {
 			}
 		});		
 		
-		p1.then(new DirectResolver<Integer, String>() {
+		Promise ppp = p1.then(new DirectResolver<Integer, String>() {
 
 			@Override
 			public String resolve(Integer newValue) {
@@ -107,8 +108,7 @@ public class PromiseTest {
 
 			@Override
 			public String reject(Exception exception) {
-				Promise.throwException(exception);
-				return null;
+				throw Promise.newException(exception);
 			}
 		}).then(new SimplePromiseResolver<String, Integer>() {
 
@@ -134,14 +134,22 @@ public class PromiseTest {
 				});
 			}
 			
-		}).then(new SimpleResolver<Integer, Void>() {
+		}).then(new SimpleResolver<Integer, Integer>() {
 
 			@Override
-			public Void resolve(Integer newValue) {
+			public Integer resolve(Integer newValue) {
 				System.out.println("then resolve a new value=" + newValue);
 				return null;
 			}
+		}).then(new SimpleResolver<Number, Integer>() {
+			@Override
+			public Integer resolve(Number newValue) {
+				return null;
+			}
 		});
+
+
+
 		System.out.println("start Promise");
 
 
@@ -183,6 +191,32 @@ public class PromiseTest {
 			}
 		}.start();
 
+
+		Thenable<Integer> th = p1;
+
+		Thenable<Integer> th2 = th.then(new SimpleResolver<Number, Integer>() {
+			@Override
+			public Integer resolve(Number newValue) {
+				return 4;
+			}
+		});
+
+		Thenable<Number> th3 = th2.cast();
+		th3.then(new SimpleResolver<Number, Object>() {
+			/**
+			 * 异步回调结果成功方法，如果你想直接处理异常抛出<br>
+			 * 可以使用 throw {@link Promise#newException(Exception) Promise.newException(e)}
+			 * 来包装实际的异常
+			 *
+			 * @param newValue resolve的结果
+			 * @return 解析结果
+			 */
+			@Override
+			public Object resolve(Number newValue) {
+				System.out.println(newValue);
+				return null;
+			}
+		});
 
 	}
 
