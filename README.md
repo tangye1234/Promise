@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/hnakagawa/android-promise.png)](https://travis-ci.org/hnakagawa/android-promise)
+[![Build Status](https://travis-ci.org/tangye1234/Promise.png)](https://travis-ci.org/tangye1234/Promise)
 A Promise for android
 ======================
 
