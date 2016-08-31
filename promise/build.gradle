@@ -18,9 +18,9 @@ android {
     }
 }
 
-def versionName = project.property('version')
-def artifactId = project.property('artifactId')
-def groupId = project.property('groupId')
+def versionName = project.hasProperty('version') ? project.property('version') : ''
+def artifactId = project.hasProperty('artifactId') ? project.property('artifactId') : ''
+def groupId = project.hasProperty('groupId') ? project.property('groupId') : ''
 
 uploadArchives {
     repositories {
