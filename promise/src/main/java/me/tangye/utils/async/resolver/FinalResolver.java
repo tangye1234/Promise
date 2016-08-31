@@ -21,8 +21,7 @@ public abstract class FinalResolver<D> implements DirectResolver<D,D> {
     @Override
     public final D reject(Exception exception) {
         onFinal(false);
-        Promise.throwException(exception);
-        return null;
+        throw Promise.newException(exception);
     }
 
     public abstract void onFinal(boolean success);

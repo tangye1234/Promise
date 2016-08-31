@@ -9,7 +9,12 @@ import me.tangye.utils.async.Promise;
 
 /**
  * Created by coffee3689 on 16/8/23.
- * 通过制造一个Deferred对象，创建一个Promise.Locker，同事派生Promise
+ * Modified by tangye on 16/8/29.
+ *<br>
+ * 通过制造一个Deferred对象，创建一个Promise.Locker，同时可以派生Promise<br>
+ * PromiseDeferred对象可以单独make出来, 而无需提前定义Function对象用于描述一个执行过程<br>
+ * PromiseDeferred对象是一个完整的Locker对象, 扮演Android中的Deferred对象解决器工作, 亦可生成新的Promise
+ * @see me.tangye.utils.async.Promise.Locker
  */
 public class PromiseDeferred<T> extends Promise.Locker<T> {
     private final AtomicBoolean done = new AtomicBoolean(false);
@@ -18,7 +23,7 @@ public class PromiseDeferred<T> extends Promise.Locker<T> {
     private Promise.Locker<T> internalLocker;
 
     public static <D> PromiseDeferred<D> make(Looper looper) {
-        return new PromiseDeferred<>();
+        return new PromiseDeferred<>(looper);
     }
 
     public static <D> PromiseDeferred<D> make() {
@@ -33,10 +38,6 @@ public class PromiseDeferred<T> extends Promise.Locker<T> {
                 internalLocker = locker;
             }
         }, looper);
-    }
-
-    private PromiseDeferred() {
-        this(Looper.myLooper());
     }
 
     public Promise<T> promise() {
