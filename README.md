@@ -22,7 +22,7 @@ a desired looper thread.
 If you want your runnable to be running asynchronously, just make your own thread to take charge of running and
 remember to `resolve` or `reject` the result.
 
-While in `thenable` method, you should supply us a `resolver`` which can turn the promise result into another promise
+While in `thenable` method, you should supply us a `resolver` which can turn the promise result into another promise
 just like Promise in javascript.
 
 And, The Promise lib here also provide us a lot of features that js promise owns too. Here is the example:
