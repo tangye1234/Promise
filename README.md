@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/tangye1234/Promise.png)](https://travis-ci.org/tangye1234/Promise)
-A Promise for android
+A Promise for android [![Build Status](https://travis-ci.org/tangye1234/Promise.png)](https://travis-ci.org/tangye1234/Promise)
 ======================
 
 A Promise library for android which follows Promise/A+ standard
@@ -266,7 +265,7 @@ The former can return a result directly while the latter can return a promise
 License
 -------
 
-    Copyright 2013 tangye1234.
+    Copyright 2016 tangye1234.
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
