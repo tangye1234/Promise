@@ -232,11 +232,11 @@ Promise Static Method
 * `Promise.make` is a promise factory method which can make a new promise
 * `Promise.all` equals to javascript `Promise.all`
 * `Promise.race` equals to javascript `Promise.race`
-* `Promise.series` means sequentially runs functions
+* `Promise.series` means running functions sequentially
 * `Promise.resolveNonPromiseValue` equals to javascript `Promise.resolve`
 * `Promise.rejectException` equals to javascript `Promise.reject`
-* `Promise.newException` is to wrap and convert any exception into a internal runtime exception
-* `Promise.timeout` is to make a n milli-seconds timeout promise
+* `Promise.newException` is to wrap and convert any exception into an internal runtime exception
+* `Promise.timeout` is to make an n milli-seconds timeout promise
 
 
 Promise Instance Method
@@ -251,15 +251,15 @@ Promise Instance Method
 Promise Resolver Types
 -------
 in javascript, calling then method is as simple as promise.then(resolve, reject)
-in java, it is not easy to make two object-arguments, so making it simple, we calling then like this
-`promise.then(resolver)` within which the resolver has two method `resolve` and `reject`
+in java, it's not easy to generate two object-arguments, so let's make it simple, that we can call `.then` like this
+`promise.then(resolver)` within which the resolver implements two method `resolve` and `reject`
 The Promise lib provides many pre-built resolvers, and all are based on `DirectResolver` or `PromiseResolver`.
-The former can return a result directly while the latter can return a promise
-* `DirectResolver` turn a result into a new one
-* `Promiseresolver` turn a result into a promise
-* `SimpleResolver` and `SimplePromiseResolver` only care about resolving the result, while popping exceptions on rejecting
-* `ExceptionResolver` and `ExceptionPromiseResolver` only care about a specific type of exception
-* `FinalResolver` only cares about the final thing whether it is resolved or rejected
+The former returns a result directly while the latter returns a promise
+* `DirectResolver` turns a result into a new one
+* `Promiseresolver` turns a result into a promise
+* `SimpleResolver` and `SimplePromiseResolver` only care about resolving the result, other than popping exceptions on rejecting
+* `ExceptionResolver` and `ExceptionPromiseResolver` only focus on a specific type of exception
+* `FinalResolver` only processes the final stuff whenever it is resolved or rejected
 
 
 License
