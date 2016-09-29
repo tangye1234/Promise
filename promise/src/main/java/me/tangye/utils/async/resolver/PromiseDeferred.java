@@ -8,9 +8,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import me.tangye.utils.async.Promise;
 
 /**
- * Created by coffee3689 on 16/8/23.
- * Modified by tangye on 16/8/29.
- *<br>
+ * Created by coffee3689 on 16/8/23. <br>
+ * Modified by tangye on 16/8/29. <br>
  * 通过制造一个Deferred对象，创建一个Promise.Locker，同时可以派生Promise<br>
  * PromiseDeferred对象可以单独make出来, 而无需提前定义Function对象用于描述一个执行过程<br>
  * PromiseDeferred对象是一个完整的Locker对象, 扮演Android中的Deferred对象解决器工作, 亦可生成新的Promise

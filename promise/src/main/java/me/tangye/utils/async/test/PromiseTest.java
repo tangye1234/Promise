@@ -7,6 +7,7 @@ import java.util.concurrent.TimeoutException;
 import me.tangye.utils.async.Promise;
 import me.tangye.utils.async.Promise.DirectFunction;
 import me.tangye.utils.async.Promise.Locker;
+import me.tangye.utils.async.PromiseFactory;
 import me.tangye.utils.async.Thenable;
 import me.tangye.utils.async.resolver.DirectResolver;
 import me.tangye.utils.async.resolver.ExceptionPromiseResolver;
@@ -198,13 +199,20 @@ public class PromiseTest {
 		});
 
 		Thenable<Number> th3 = th2.cast();
-		th3.then(new SimpleResolver<Number, Object>() {
+		th3.then(new SimpleResolver<Number, String>() {
 			@Override
-			public Object resolve(Number newValue) {
+			public String resolve(Number newValue) {
 				System.out.println(newValue);
-				return null;
+				return String.valueOf(newValue);
 			}
-		});
+		}).then(defer2);
+
+		PromiseFactory.create(new DirectFunction<String>() {
+			@Override
+			public void run(Locker<String> locker) {
+				locker.resolve("444");
+			}
+		}).make().then(defer2);
 
 	}
 
