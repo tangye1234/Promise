@@ -1,5 +1,7 @@
 package me.tangye.utils.async;
 
+import android.os.Looper;
+
 import me.tangye.utils.async.resolver.PromiseDeferred;
 
 /**
@@ -16,7 +18,12 @@ public abstract class PromiseFactory<T> implements Promise.Function<T> {
      */
     public final Promise<T> make(PromiseDeferred<T> deferred) {
         if (!deferred.done()) {
-            run(deferred);
+            try {
+                run(deferred);
+            } catch (Exception e) {
+                deferred.reject(e);
+            }
+            // run(deferred); // 到底需不需要try catch
         }
         return deferred.promise();
     }
@@ -27,6 +34,16 @@ public abstract class PromiseFactory<T> implements Promise.Function<T> {
      */
     public final Promise<T> make() {
         PromiseDeferred<T> deferred = PromiseDeferred.make();
+        return make(deferred);
+    }
+
+    /**
+     * 构造一个异步过程
+     * @param looper, 返回的promise所在的looper
+     * @return 构造异步过程的Promise
+     */
+    public final Promise<T> make(Looper looper) {
+        PromiseDeferred<T> deferred = PromiseDeferred.make(looper);
         return make(deferred);
     }
 

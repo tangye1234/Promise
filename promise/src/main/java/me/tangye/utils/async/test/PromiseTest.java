@@ -214,6 +214,13 @@ public class PromiseTest {
 			}
 		}).make().then(defer2);
 
+		Promise<Integer> intPromise = Promise.resolve(5);
+		Promise<Integer> exPromise = Promise.reject(new Exception());
+		Promise<Integer> clonePromise = Promise.resolve(th);
+
+		Promise.all(intPromise, exPromise, clonePromise);
+
+
 	}
 
 }

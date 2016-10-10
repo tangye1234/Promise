@@ -213,13 +213,27 @@ public class PromiseTest {
 		});
 
 		Thenable<Number> th3 = th2.cast();
-		th3.then(new SimpleResolver<Number, Object>() {
+		th3.then(new SimpleResolver<Number, String>() {
 			@Override
-			public Object resolve(Number newValue) {
+			public String resolve(Number newValue) {
 				System.out.println(newValue);
-				return null;
+				return String.valueOf(newValue);
 			}
-		});
+		}).then(defer2);
+
+		PromiseFactory.create(new DirectFunction<String>() {
+			@Override
+			public void run(Locker<String> locker) {
+				locker.resolve("444");
+			}
+		}).make().then(defer2);
+
+		Promise<Integer> intPromise = Promise.resolve(5);
+		Promise<Integer> exPromise = Promise.reject(new Exception());
+		Promise<Integer> clonePromise = Promise.resolve(th);
+
+		Promise.all(intPromise, exPromise, clonePromise);
+
 
 	}
 
@@ -233,8 +247,8 @@ Promise Static Method
 * `Promise.all` equals to javascript `Promise.all`
 * `Promise.race` equals to javascript `Promise.race`
 * `Promise.series` means running functions sequentially
-* `Promise.resolveNonPromiseValue` equals to javascript `Promise.resolve`
-* `Promise.rejectException` equals to javascript `Promise.reject`
+* `Promise.resolve` equals to javascript `Promise.resolve`
+* `Promise.reject` equals to javascript `Promise.reject`
 * `Promise.newException` is to wrap and convert any exception into an internal runtime exception
 * `Promise.timeout` is to make an n milli-seconds timeout promise
 
@@ -256,10 +270,39 @@ in java, it's not easy to generate two object-arguments, so let's make it simple
 The Promise lib provides many pre-built resolvers, and all are based on `DirectResolver` or `PromiseResolver`.
 The former returns a result directly while the latter returns a promise
 * `DirectResolver` turns a result into a new one
-* `Promiseresolver` turns a result into a promise
+* `PromiseResolver` turns a result into a promise
 * `SimpleResolver` and `SimplePromiseResolver` only care about resolving the result, other than popping exceptions on rejecting
 * `ExceptionResolver` and `ExceptionPromiseResolver` only focus on a specific type of exception
 * `FinalResolver` only processes the final stuff whenever it is resolved or rejected
+* `DoneResolver` only processes the final stuff with two arguments: exception and result
+* `Deferred` a specific resolver which will deliver the result to another deferred callback
+
+
+PromiseDeferred Static Method
+-------
+* `PromiseDeferred.make` is a factory method which can make a deferred object extending from `Promise.Locker` who is also a specific resolver
+
+
+PromiseDeferred Instance Method
+-------
+* `resolve` equals to javascript `defer.resolve`, usually used as a locker in promise
+* `reject` equals to javascript `defer.reject`, usually used as a locker in promise
+* `done` detect whether this deferred has been ever invoked resolve or reject
+* `post` equals to android `handler.post`, using the internal handler
+* `postDelay` equals to android `handler.postDelay`, using the internal handler
+* `removeCallbacks` equals to android 'handler.removeCallbacks', using the internal handler
+* `promise` equals to javascript `defer.promise`, which will generate a promise object who is waiting for the deferred to be resolved
+
+
+PromiseFactory Static Method
+-------
+* `PromiseFactory.create` will make a promise factory with a `DirectFunction` to implement
+
+
+PromiseFactory Instance Method
+-------
+* `promiseFactory.run` is a function you should override when you create your own factory unless you use static `create`
+* `promiseFactory.make` is to make a new promise, each time you call this, the `run(locker)` will be executed
 
 
 License
